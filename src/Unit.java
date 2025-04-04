@@ -4,6 +4,10 @@ public abstract class Unit {
     private Territory currentSpace;
     private Territory.Type canMoveTo;
 
+    @Override
+    public boolean equals() {
+
+    }
     //All actions a Unit can perform. Each action returns true if it is completed legally.
     public boolean move(Territory newTerritory, ArrayList<Order> supportOrders) {
 

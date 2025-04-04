@@ -6,4 +6,10 @@ public class Country {
     private int supplyPoints;
     private ArrayList<Order> currentOrders;
     public ArrayList<Unit> getUnits(){ return this.units; }
+    public boolean checkUnit(Unit target) {
+        for(Unit i: units) {
+            if(i.equals(target)) return true;
+        }
+        return false;
+    }
 }

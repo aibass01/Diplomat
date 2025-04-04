@@ -4,5 +4,5 @@ public class Territory {
         SEA,
         COAST
     }
-    
+    private String name;
 }
