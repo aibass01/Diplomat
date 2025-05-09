@@ -18,7 +18,7 @@ public class Player {
     public ArrayList<Unit> getUnits(){ return this.units; }
     public Unit getUnit(String name) {
         for(Unit u : units) {
-            if(u.getLocation().getName() == name) return u;
+            if(u.getLocation().getName().equals(name)) return u;
         }
         return null;
     }
@@ -36,14 +36,10 @@ public class Player {
                 while(sc.hasNextLine()) {
                     String line = sc.nextLine();
                     if(line.isEmpty()) break;
-                    switch(line.charAt(0)) {
-                        case 'A':
-                            units.add(new Army(map.getTerritory(line.substring(2,5))));
-                            break;
-                        case 'F':
-                            units.add(new Fleet(map.getTerritory(line.substring(2,5))));
-                            break;
-                        default: throw new IllegalArgumentException("Unit entries must be marked with 'A' for Army of 'F' for Fleet.");
+                    switch (line.charAt(0)) {
+                        case 'A' -> units.add(new Army(map.getTerritory(line.substring(2, 5))));
+                        case 'F' -> units.add(new Fleet(map.getTerritory(line.substring(2, 5))));
+                        default -> throw new IllegalArgumentException("Unit entries must be marked with 'A' for Army of 'F' for Fleet.");
                     }
                 }
                 break;
@@ -51,10 +47,17 @@ public class Player {
         }
         sc.close();
     }
-    public boolean checkUnit(Unit target) {
+    public Unit getUnit(char unitType, Territory location) {
+        // Implements linear search
         for(Unit i: units) {
-            if(i.equals(target)) return true;
+            if (i.getLocation().equals(location)) {
+                return switch (i) {
+                    case Army a -> (unitType == 'A') ? a : null;
+                    case Fleet f -> (unitType == 'F') ? f : null;
+                    default -> throw new IllegalArgumentException("Unexpected unit type:" + unitType);
+                };
+            }
         }
-        return false;
+        return null;
     }
 }

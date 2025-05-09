@@ -15,15 +15,9 @@ public abstract class Unit {
         map.getTerritory(location.getName()).setOccupying_unit(this);
     }
 
-    /*
-    public boolean equals() {
-
+    public boolean equals(Unit other) {
+        return this.getLocation() == other.getLocation();
     }
-    //All actions a Unit can perform. Each action returns true if it is completed legally.
-    public boolean move(Territory toTerritory, int supports) {
-
-    }
-    */
 }
 class Army extends Unit {
     public Army(Territory location) {

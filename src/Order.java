@@ -14,26 +14,26 @@ public class Order {
     }
 }
 class MoveOrder extends Order {
-    private Territory move_to;
+    private final Territory MOVE_TO;
 
     public MoveOrder(Unit unit, Territory move_to) {
         super(unit);
-        this.move_to = move_to;
+        this.MOVE_TO = move_to;
     }
 }
 class SupportOrder extends  Order {
-    private Order order_supported;
+    private final Order ORDER_SUPPORTED;
 
     public SupportOrder(Unit unit, Order order_supported) {
         super(unit);
-        this.order_supported = order_supported;
+        this.ORDER_SUPPORTED = order_supported;
     }
 }
 class ConvoyOrder extends  Order {
-    private Unit unit_supported;
+    private final Unit UNIT_TO_CONVOY;
 
-    public ConvoyOrder(Unit unit, Unit unit_supported) {
+    public ConvoyOrder(Unit unit, Unit unit_to_convoy) {
         super(unit);
-        this.unit_supported = unit_supported;
+        this.UNIT_TO_CONVOY = unit_to_convoy;
     }
 }

@@ -7,6 +7,7 @@ public class Map {
     private static Map single_instance = null;
     private final Territory[] territories;
 
+    // Map() implements singleton architecture
     private Map() throws FileNotFoundException {
         this.territories = populateMapFromTable();
     }
@@ -24,12 +25,13 @@ public class Map {
         File file = new File("src/Map.txt");
         Scanner sc = new Scanner(file);
         // Each line in the ArrayList represents a territory using an array of length 3,
-        // where index 0 is the name and type,
-        // index 1 is the adjacent territories a Fleet or Army could move to,
-        // and index 2 is the adjacent territories only an ARmy could move to.
+        // where index 0 is [name, type],
+        // index 1 is an array with the adjacent territories a Fleet or Army could move to,
+        // and index 2 is an array the adjacent territories only an ARmy could move to.
         ArrayList<String[][]> data = new ArrayList<>();
         while (sc.hasNext()) {
             String[] line = sc.next().split("[\\|]");
+            // Columns are of indeterminate size at compile time
             String[][] split_line = new String[3][];
             for(int i = 0; i<3; i++) {
                 try{
@@ -51,6 +53,7 @@ public class Map {
             result[i] = new Territory(data.get(i)[0][0], data.get(i)[0][1], data.get(i)[0][2]);
         }
         // Now that all Territories have been declared, initialize their border instance data
+        // Territories are all interlinked, so we can't do this in the Territory() constructor
         for(int i = 0; i< data.size(); i++) {
             Territory[] borders1 = new Territory[data.get(i)[1].length];
             Territory[] borders2 = new Territory[data.get(i)[2].length];
@@ -65,7 +68,7 @@ public class Map {
         return result;
     }
 
-    // Implements simple binary search. Overloaded for eas of use in populateMapFromTable.
+    // Implements binary search. Overloaded for ease of use in populateMapFromTable.
     public Territory getTerritory(String target) {
         Territory[] list = territories;
         int min_index = 0, max_index = list.length-1, i;
