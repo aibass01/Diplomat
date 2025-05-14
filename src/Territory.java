@@ -5,8 +5,8 @@ public class Territory {
         COAST
     }
     private final String name; //Names should be 3 letters all caps i.e. "PRU" for prussia
-    private Type type;
-    private boolean is_supply_point;
+    private final Type type;
+    private final boolean isSupplyPoint;
 
     public void setOwner(Player owner) {
         this.owner = owner;
@@ -18,15 +18,15 @@ public class Territory {
 
     private Player owner = null;
 
-    public Unit getOccupying_unit() {
-        return occupying_unit;
+    public Unit getOccupyingUnit() {
+        return occupyingUnit;
     }
 
-    public void setOccupying_unit(Unit occupying_unit) {
-        this.occupying_unit = occupying_unit;
+    public void setOccupyingUnit(Unit occupying_unit) {
+        this.occupyingUnit = occupying_unit;
     }
 
-    private Unit occupying_unit;
+    private Unit occupyingUnit;
 
     public String getName() {
         return name;
@@ -49,16 +49,17 @@ public class Territory {
     private Territory[] borders1, borders2;
     public Territory(String name, String type, String is_supply_point) {
         this.name = name;
-        this.is_supply_point = is_supply_point.equals("Y");
+        this.isSupplyPoint = is_supply_point.equals("Y");
         switch(type) {
             case "L": this.type = Type.LAND; break;
             case "S": this.type = Type.SEA; break;
             case "C": this.type = Type.COAST; break;
+            default: this.type = null; break;
         }
     }
 
     public String toString() {
-        return name + ", " + type + ", " + is_supply_point;
+        return name;
     }
 
     public void setBorders(Territory[] borders1, Territory[] borders2) {

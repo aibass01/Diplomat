@@ -1,18 +1,69 @@
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FilenameFilter;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Scanner;
 
 public class Player {
     static Map map = Map.getInstance();
     private final String nation;
+    public String getNation() { return nation; }
     private ArrayList<Unit> units;
-
     private int supply_points;
-    private ArrayList<Order> current_orders;
+    private ArrayList<Order> orders;
+    private static ArrayList<Order> allOrders = new ArrayList<>();
+    public static ArrayList<Order> getAllOrders() {
+        return allOrders;
+    }
+    public static ArrayList<Order> getHoldOrders() {
+        ArrayList<Order> result = new ArrayList<>();
+        for(Order o: allOrders) {
+            //NOTE: hold orders are represented by valid default Orders, not any subclass of Order
+            if(!(o instanceof MoveOrder || o instanceof ConvoyOrder || o instanceof SupportOrder)) {
+                result.add(o);
+            }
+        }
+        return result;
+    }
+    public static ArrayList<MoveOrder> getMoveOrders() {
+        ArrayList<MoveOrder> result = new ArrayList<>();
+        for(Order o: allOrders) {
+            //NOTE: hold orders are represented by valid default Orders, not any subclass of Order
+            if(o instanceof MoveOrder) {
+                System.out.println("found a move order");
+                result.add((MoveOrder)o);
+            }
+        }
+        return result;
+    }
+    public static ArrayList<SupportOrder> getSupportOrders() {
+        ArrayList<SupportOrder> result = new ArrayList<>();
+        for(Order o: allOrders) {
+            //NOTE: hold orders are represented by valid default Orders, not any subclass of Order
+            if(o.getClass().equals(ConvoyOrder.class)) result.add((SupportOrder)o);
+        }
+        return result;
+    }
+    public static ArrayList<ConvoyOrder> getConvoyOrders() {
+        ArrayList<ConvoyOrder> result = new ArrayList<>();
+        for(Order o: allOrders) {
+            //NOTE: hold orders are represented by valid default Orders, not any subclass of Order
+            if(o.getClass().equals(ConvoyOrder.class)) result.add((ConvoyOrder)o);
+        }
+        return result;
+    }
+
+    private static final File ORDERS_DIR = new File("current/orders");
     public Player(String nation) {
         this.nation = nation;
         this.units = new ArrayList<>();
+        this.orders = new ArrayList<>();
+    }
+
+    public ArrayList<Order> getOrders() {
+        return orders;
     }
 
     public ArrayList<Unit> getUnits(){ return this.units; }
@@ -46,6 +97,53 @@ public class Player {
             }
         }
         sc.close();
+    }
+
+    public void loadOrders() throws FileNotFoundException {
+        if(ORDERS_DIR.exists() && ORDERS_DIR.isDirectory()) {
+            File[] files;
+            try {
+                files = ORDERS_DIR.listFiles((dir, name) -> name.substring(0, name.length()-4).equals(nation));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            switch(files.length) {
+                case 0: throw new FileNotFoundException("No orders found for country:" + nation);
+                case 1:
+                    Scanner sc = new Scanner(files[0]);
+                    while(sc.hasNextLine()) {
+                        System.out.println("Scanning an order in");
+                        String[] line = sc.nextLine().split("[ ]");
+                        //Line format: ["A", "PAR", "-", "BUR"]
+                        orders.add(Order.stringArrayToOrder(this, Arrays.copyOfRange(line, 0, 4)));
+                    }
+                    sc.close();
+                    allOrders.addAll(orders);
+                    break;
+                default: throw new IllegalStateException("Too many orders files found.");
+            }
+        } else throw new FileNotFoundException("Unable to locate directory:" + ORDERS_DIR);
+    }
+    public void loadConvoyOrders() {
+        for(Order order: orders) {
+            if(order instanceof ConvoyOrder) {
+                Order targetOrder = Order.stringArrayToOrder(this, order.getTargetStringArray());
+                for(Order other: allOrders) {
+                    if(other.equals(targetOrder)) ((ConvoyOrder) order).setConvoyedMovement((MoveOrder) other);
+                }
+            }
+        }
+    }
+
+    public void loadSupportOrders() {
+        for(Order order: orders) {
+            if(order instanceof SupportOrder) {
+                Order targetOrder = Order.stringArrayToOrder(this, order.getTargetStringArray());
+                for(Order other: allOrders) {
+                    if(other.equals(targetOrder)) ((SupportOrder) order).setSupport(other);
+                }
+            }
+        }
     }
     public Unit getUnit(char unitType, Territory location) {
         // Implements linear search
