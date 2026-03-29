@@ -1,13 +1,12 @@
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 public class Main {
     public static void main(String[] args) {
         System.out.println("Hello world!");
         Map map = Map.getInstance();
+        Map newMap = Map.getNewMap();
         /*
         System.out.println("Printing data from a territory on the map:");
         System.out.println(map.getTerritory("YOR"));
@@ -32,8 +31,21 @@ public class Main {
                 throw new RuntimeException(e);
             }
         }
-
+        System.out.println("Starting state:");
+        for(Player p: players) {
+            System.out.println(p.getNation() + ":");
+            for(Unit u: p.getUnits()) {
+                if(u.getLocation() == null) {
+                    System.out.println((u instanceof Army) ? "A" : "F");
+                    System.out.print(" DISLODGED from " + u.getPREVIOUS_LOCATION().getName());
+                } else {
+                    System.out.println(u);
+                }
+            }
+            System.out.println();
+        }
         compileOrders(players);
+        System.out.println("Result state:");
         for(Player p: players) {
             System.out.println(p.getNation() + ":");
             for(Unit u: p.getUnits()) {
@@ -49,123 +61,197 @@ public class Main {
     }
 
     public static void compileOrders(Player[] players) {
+        Map newMap = Map.getNewMap();
+        Queue<Order> orderQueue = new LinkedList<>();
         for(Player p: players) {
             try {
                 p.loadOrders();
-                p.loadConvoyOrders();
-                p.loadSupportOrders();
+                orderQueue.addAll(p.getOrders());
             } catch (FileNotFoundException e) {
                 throw new RuntimeException(e);
             }
         }
-        ArrayList<Order> holdOrders = Player.getHoldOrders();
-        ArrayList<MoveOrder> moveOrders = Player.getMoveOrders();
-        ArrayList<SupportOrder> supportOrders = Player.getSupportOrders();
-        ArrayList<ConvoyOrder> convoyOrders = Player.getConvoyOrders();
-        for(Order o: Player.getAllOrders()) {
-            System.out.println(o);
-        }
-        System.out.println(holdOrders.size());
-
-        // Check validity of all convoy orders
-        for(ConvoyOrder co: convoyOrders) {
-            Unit u = co.getUnit();
-            Territory current = u.getLocation();
-            MoveOrder convoying = co.getConvoyedMovement();
-            if(!(Arrays.asList(current.getBorders1()).contains(convoying.getMoveTo()) && convoying.getMoveTo().getType() == Territory.Type.COAST)) {
-                co.setValid();
-                convoying.setValid();
+        //Iterate through all orders in the queue until all have been solved
+        // x = 0,1: all support cuts are finalized
+        // x = 2: all uncut supports go through
+        // x = 3: dislodgements are finalized
+        // x >= 4: convoy orders are finalized
+        for(int x = 0, k=0; !orderQueue.isEmpty(); k++) {
+            if(k>=orderQueue.size()) {
+                k=0;
+                x++;
             }
-        }
-        // Check validity and cut support for move orders
-        for(int i = 0; i < moveOrders.size(); i++) {
-            MoveOrder mo = moveOrders.get(i);
-            Unit u = mo.getUnit();
-            Territory current = u.getLocation();
-            Territory target = mo.getMoveTo();
-            // Checks if the target territory is adjacent to the current territory
-            if(!(mo.isValid() == Order.Valid.TRUE || Arrays.asList(current.getBorders1()).contains(target))) {
-                if(u instanceof Fleet) {
-                    System.out.println("Order invalidated: " + mo);
-                    mo.setInvalid();
-                    moveOrders.remove(i);
-                    i--;
-                    continue;
+            Order o = orderQueue.remove();
+            System.out.println("Attempting to solve: "+o);
+            Unit u = o.getUnit();
+            //execute logic based on the type of order
+            switch(o) {
+                case MoveOrder mo -> {
+                    //check order validity:
+                    if(!mo.isValidated()) {
+                        if(!Arrays.asList(u.getLocation().getBorders1()).contains(mo.getMoveTo())) {
+                            if(u instanceof Fleet) {
+                                System.out.println("- Order invalidated: "+mo+". Replacing with hold order.");
+                                orderQueue.add(new Order(u)); //Add hold order into queue to replace invalid move order
+                                continue;
+                            }
+                            //If the else clause is reached, u must be an army, so check it's borders2 for the target territory
+                            else if(!Arrays.asList(u.getLocation().getBorders2()).contains(mo.getMoveTo())) {
+                                if(x>=5) { //Convoys are finished resolving at x=5
+                                    //Replaced invalid convoy attempt with hold
+                                    orderQueue.add(new Order(u));
+                                    System.out.println("- Order \'teleports\'. Invalidating.");
+                                    continue;
+                                } else {
+                                    System.out.println("- Order is convoy-only");
+                                    mo.setConvoyOnly();
+                                    continue;
+                                }
+                            }
+                        } else {
+                            System.out.println("- Valid move order");
+                            mo.setValid();
+                        }
+                    }
+                    //Cut support orders
+                    if(!mo.getMoveTo().isEmpty()) {
+                        for(int i = 0; i<orderQueue.size(); i++, orderQueue.add(orderQueue.remove())) {
+                            Order top = orderQueue.peek();
+                            if(top.getUnit().getLocation().equals(mo.getMoveTo()) && top instanceof SupportOrder) {
+                                //check for rules edge case where a unit cannot cut support to another unit attacking the original unit
+                                if(((SupportOrder) top).getOrderSupported() instanceof MoveOrder
+                                && ((MoveOrder) ((SupportOrder) top).getOrderSupported()).getMoveTo().equals(u.getLocation())) {
+                                    //replace this (mo) order with a hold
+                                    orderQueue.add(new Order(u));
+                                    System.out.println("- \'"+mo+"\' is an illegal support cut.");
+                                    break;
+                                }
+                                //Remove cut support order and replace with a hold
+                                System.out.println("- \'"+top+"\' cut by \'"+mo+"\'");
+                                orderQueue.add(new Order(orderQueue.remove().getUnit()));
+                                break;
+                            }
+                        }
+                    }
+                    boolean uncontested = true;
+                    List<MoveOrder> collisions = new ArrayList<>();
+                    //Iterate through the entire queue looking for collisions
+                    for (int i = 0; i < orderQueue.size(); i++, orderQueue.add(orderQueue.remove())) {
+                        //Check if there are any other move orders that could collide with this order
+                        if ((orderQueue.peek() instanceof MoveOrder && ((MoveOrder) orderQueue.peek()).getMoveTo().equals(mo.getMoveTo()))
+                                || (orderQueue.peek().getClass() == Order.class && orderQueue.peek().getUnit().getLocation().equals(mo.getMoveTo()))) {
+                            uncontested = false;
+                            collisions.add((MoveOrder) orderQueue.peek());
+                            System.out.println("- Collision found: " + orderQueue.peek());
+                            System.out.println("   - "+mo.getStrength()+" str vs. "+orderQueue.peek().getStrength()+" str");
+                        }
+                    }
+                    if(mo.getStrength() == -1) {
+                        //Move orders that loose standoffs become holds
+                        orderQueue.add(new Order(u));
+                        System.out.println("- \'" + mo + "\' bounces");
+                        continue;
+                    }
+                    //uncontested case
+                    if (uncontested) {
+                        //order succeeds. Note that the order is not added back to the queue, because it's finished processing
+                        System.out.println("- Uncontested order \'" + mo + "\' succeeds");
+                        u.setLocation(newMap.getTerritory(mo.getMoveTo().getName()));
+                        u.getLocation().setOccupyingUnit(u);
+                        continue;
+                    //resolve standoffs
+                    } else if (x >= 2 && mo.isValidated()) {
+                        boolean lostStandoff = false;
+                        for (MoveOrder collision : collisions) {
+                            if (mo.getStrength() <= collision.getStrength()) {
+                                //Move orders that loose standoffs become holds
+                                orderQueue.add(new Order(u));
+                                lostStandoff = true;
+                                System.out.println("- \'" + mo + "\' bounces");
+                            }
+                            if (mo.getStrength() >= collision.getStrength()) {
+                                collision.setBounce();
+                                System.out.println("- \'"+collision+"\' will bounce");
+                            }
+                        }
+                        if (!lostStandoff) {
+                            u.setLocation(newMap.getTerritory(mo.getMoveTo().getName()));
+                            u.getLocation().setOccupyingUnit(u);
+                            System.out.println("- \'" + mo + "\' wins standoff");
+                            continue;
+                        }
+                    } else {
+                        //add order back into queue for re-assessment later
+                        orderQueue.add(mo);
+                        System.out.println("- Cannot be calculated now, adding back to queue");
+                    }
+                } case SupportOrder so -> {
+                    //Check validity:
+                    if(!so.isValidated()) {
+                        for(int i = 0; i < orderQueue.size(); i++, orderQueue.add(orderQueue.remove())) {
+                           if(orderQueue.peek().equals(so.getOrderSupported())) {
+                               so.setSupport(orderQueue.peek());
+                               so.setValid();
+                               System.out.println("- Valid support order");
+                           }
+                        }
+                    }
+                    //Execute support orders after cuts have been finalized
+                    if(x>=2 && so.isValidated()) {
+                        so.getOrderSupported().addSupport();
+                        u.setLocation(newMap.getTerritory(u.getLocation().getName()));
+                        u.getLocation().setOccupyingUnit(u);
+                        //Do no add so back to queue, since it's finished executing
+                    } else if(x>=2 && !so.isValidated()) {
+                        //Replace so with a hold order
+                        orderQueue.add(new Order(so.getUnit()));
+                        System.out.println("\'"+so+"\' is invalid");
+                    } else {
+                        //Add so back to queue for further processing
+                        orderQueue.add(so);
+                    }
+                } case ConvoyOrder co -> {
+                    //Check validity
+                    if(!co.isValidated()) {
+                        //Convoys MUST convoy an army across water
+                        if(u.getLocation().getType() != Territory.Type.SEA || !(co.getConvoyedMovement().getUnit() instanceof  Army)) {
+                            orderQueue.add(new Order(u));
+                            System.out.println("- Invlaid convoy");
+                            continue;
+                        }
+                        for(int i = 0; i < orderQueue.size(); i++, orderQueue.add(orderQueue.remove())) {
+                            if(orderQueue.peek().equals(co.getConvoyedMovement())) {
+                                co.setConvoyedMovement((MoveOrder) orderQueue.peek());
+                                co.setValid();
+                                System.out.println("- Valid convoy");
+                            }
+                        }
+                    }
+                    if(x<=3) { //Wait until x=4 to resolve convoys
+                        orderQueue.add(co);
+                        continue;
+                    } else if(!co.isValidated()) {
+                        orderQueue.add(new Order(u));
+                        System.out.println("- \'"+co+"\' is invalid");
+                        continue;
+                    } else {
+                        co.getConvoyedMovement().setValid();
+                        u.setLocation(newMap.getTerritory(u.getLocation().getName()));
+                        u.getLocation().setOccupyingUnit(u);
+                        System.out.println("- convoy \'"+co+"\' successful!");
+                    }
+                } default -> { //Hold order logic:
+                    if(x<=4) {
+                        orderQueue.add(o);
+                    } else if(!newMap.getTerritory(u.getLocation().getName()).isEmpty()){
+                        u.setLocation(null);
+                        System.out.println("- "+u+" dislodged");
+                    } else {
+                        u.setLocation(newMap.getTerritory(u.getLocation().getName()));
+                        u.getLocation().setOccupyingUnit(u);
+                        System.out.println("- \'"+o+"\' successful");
+                    }
                 }
-                //If the else clause is reached, u must be an army, so check it's borders2 for the target territory
-                else if(!Arrays.asList(current.getBorders2()).contains(target)) {
-                    System.out.println("Order invalidated: " + mo);
-                    mo.setInvalid();
-                    moveOrders.remove(i);
-                    i--;
-                    continue;
-                }
-            } else { System.out.println("good order"); mo.setValid(); }
-            //Cut support orders being attacked by this unit
-            for(SupportOrder so: supportOrders) {
-                try { // Executes if orderSupported is a move order
-                    MoveOrder orderSupported = (MoveOrder)so.getOrderSupported();
-                    // Weird edge case in the rules. If your unit attacks a unit that is supporting an attack on
-                    // your attacking unit, you do not cut support
-                    if(so.getUnit().getLocation().equals(target) && !(orderSupported.getMoveTo().equals(current))) so.setFail();
-                } catch(ClassCastException e) { // Executes if orderSupported is not a move order
-                    if(so.getUnit().getLocation().equals(target)) so.setFail();
-                }
-            }
-        }
-        // Check validity of all support orders. By this point, all valid UNDECIDED supports will succeed
-        // because support cuts have already been evaluated
-        for(SupportOrder so: supportOrders) {
-            // supportTarget is the place where support is being given
-            Territory supportTarget = (so.getOrderSupported() instanceof MoveOrder) ?
-                    ((MoveOrder) so.getOrderSupported()).getMoveTo() :
-                    so.getOrderSupported().getUnit().getLocation();
-            if(!so.getUnit().canMoveTo(supportTarget)) {
-                so.setInvalid();
-                continue;
-            }
-            if(so.isValid() != Order.Valid.FALSE && so.isSuccess() != Order.Success.FAIL) {
-                so.setPass();
-                so.getOrderSupported().addSupport();
-            }
-        }
-        // Now that supports have been allocated, compare the strengths of all units engaged in standoffs
-        // Start by dislodging any convoy orders that are out-supported by attacking units
-        for(int i = 0; i < moveOrders.size()-1; i++) {
-            for (ConvoyOrder convoyOrder : convoyOrders) {
-                if (moveOrders.get(i).getMoveTo().equals(convoyOrder.getUnit().getLocation()))
-                    Order.resolveStandoff(moveOrders.get(i), convoyOrder);
-            }
-        }
-        // Now that appropriate convoys have been dislodged, resolve standoffs between move and hold orders
-        for(int i = 0; i < moveOrders.size()-1; i++) {
-            for(int j = i + 1; j < moveOrders.size(); j++) {
-                if(moveOrders.get(i).getMoveTo().equals(moveOrders.get(j).getMoveTo())) {
-                    Order.resolveStandoff(moveOrders.get(i), moveOrders.get(j));
-                }
-            }
-            for (Order holdOrder : holdOrders) {
-                System.out.println("why is this code running");
-                if (moveOrders.get(i).getMoveTo().equals(holdOrder.getUnit().getLocation())) {
-                    Order.resolveStandoff(moveOrders.get(i), holdOrder);
-                }
-            }
-            // Uncontested units auto succeed
-            if(moveOrders.get(i).getMoveTo().getOccupyingUnit() == null) {
-                moveOrders.get(i).setPass();
-            }
-        }
-        // Units fill newly vacated spots
-        for(MoveOrder mo : moveOrders) {
-            if(mo.getMoveTo().getOccupyingUnit() == null) {
-                mo.setPass();
-            }
-        }
-        // If any units think they are still occupying a territory but have actually been dislodged from that territory,
-        // dislodge those units by setting their location to null
-        for(Player p: players) {
-            for(Unit u: p.getUnits()) {
-                if(u.getLocation() != null && !u.getLocation().getOccupyingUnit().equals(u)) u.setLocation(null);
             }
         }
     }

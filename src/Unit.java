@@ -4,7 +4,7 @@ import java.util.Arrays;
 public abstract class Unit {
     private static Map map = Map.getInstance();
     protected Territory location;
-    private final Territory PREVIOUS_LOCATION;
+    protected final Territory PREVIOUS_LOCATION;
 
     public Territory getLocation() {
         return location;
@@ -25,7 +25,7 @@ public abstract class Unit {
     }
 
     public boolean equals(Unit other) {
-        return this.getLocation() == other.getLocation();
+        return this.getLocation() == other.getLocation() && this.getClass().equals(other.getClass());
     }
 
     public boolean canMoveTo(Territory target) {

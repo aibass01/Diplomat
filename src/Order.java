@@ -2,20 +2,11 @@ import java.util.Arrays;
 
 public class Order {
     private static final Map map = Map.getInstance();
-    public static enum Valid {
-        TRUE,
-        FALSE,
-        UNKNOWN;
+    private boolean validated = false;
+    public boolean isValidated() {
+        return validated;
     }
-    private Valid isValid = Valid.UNKNOWN;
-    public Valid isValid() {
-        return isValid;
-    }
-    public void setValid() { isValid = Valid.TRUE; }
-    public void setInvalid() {
-        isValid = Valid.FALSE;
-        isSuccess = Success.FAIL;
-    }
+    public void setValid() { validated = true; }
     public void setPass() { if(isSuccess == Success.UNDECIDED) isSuccess = Success.PASS; }
     public void setFail() {
         if(isSuccess == Success.UNDECIDED) isSuccess = Success.FAIL;
@@ -32,23 +23,22 @@ public class Order {
 
     private Success isSuccess = Success.UNDECIDED;
     private int support = 0;
-    public int getSupport() {
+    public int getStrength() {
         return support;
     }
 
     public void addSupport() {
         support++;
     }
+    public void setBounce() { support = -1; }
     protected Unit unit = null;
-    String[] targetStringArray;
-
-    public Order() { isSuccess = Success.FAIL; isValid = Valid.FALSE; }
+    public Order() { isSuccess = Success.FAIL; validated = false; }
     public  Order(Unit unit) {
         this.unit = unit;
     }
 
     public String toString() {
-        return unit.toString();
+        return unit.toString() + " H";
     }
 
     public Unit getUnit() {
@@ -56,11 +46,7 @@ public class Order {
     }
 
     public boolean equals(Order other) {
-        return unit.equals(other.getUnit());
-    }
-
-    public String[] getTargetStringArray() {
-        return targetStringArray;
+        return unit.equals(other.getUnit()) && this.getClass().equals(other.getClass());
     }
 
     public static Order stringArrayToOrder(Player p, String[] strs) {
@@ -69,38 +55,34 @@ public class Order {
             return switch(strs[2]) {
                 case "H" -> new Order(u);
                 case "-" -> new MoveOrder(u, map.getTerritory(strs[3]));
-                case "S" -> new SupportOrder(u);
-                case "C" -> new ConvoyOrder((Fleet) u, Arrays.copyOfRange(strs, 4, 8));
+                case "S" -> new SupportOrder(u, Order.stringArrayToOrder(Arrays.copyOfRange(strs, 3, strs.length)));
+                case "C" -> new ConvoyOrder((Fleet) u, (MoveOrder) Order.stringArrayToOrder(Arrays.copyOfRange(strs,3, strs.length)));
                 default -> new Order(u); // default order is hold
             };
         } else return new Order(); // call to 0 arg constructor indicates invalid order
     }
-    
-    public static void resolveStandoff(Order o1, Order o2) {
-        if (o1.getSupport() > o2.getSupport()) {
-            System.out.println(o1.getUnit() + " wins!");
-            o1.setPass();
-            o2.setFail();
-            // If o2 is a hold or convoy unit order, dislodge it's unit
-            // This causes move orders being convoyed by said dislodged unit to fail
-            if(o2.getClass().equals(Order.class)) o2.getUnit().setLocation(null);
-            if(o2.getClass().equals(ConvoyOrder.class)) {
-                o2.getUnit().setLocation(null);
-                ((ConvoyOrder) o2).getConvoyedMovement().setFail();
-            }
-        } else if(o1.getSupport() < o2.getSupport()) {
-            System.out.println(o2.getUnit() + " wins!");
-            o2.setPass();
-            o1.setFail();
-        } else {
-            System.out.println("Tie between " + o1.getUnit() + " and " + o2.getUnit());
-            o1.setFail();
-            o2.setFail();
-        }
+    //Overloaded version used to generate PLACEHOLDER orders
+    public static Order stringArrayToOrder(String[] strs) {
+        Unit u = switch(strs[0].charAt(0)) { //PLACEHOLDER UNIT
+            case 'A' -> new Army(Map.getInstance().getTerritory(strs[1]));
+            case 'F' -> new Fleet(Map.getInstance().getTerritory(strs[1]));
+            default -> null;
+        };
+        if(u != null) {
+            return switch(strs[2]) {
+                case "H" -> new Order(u);
+                case "-" -> new MoveOrder(u, map.getTerritory(strs[3]));
+                default -> new Order(u); // default order is hold
+            };
+        } else return new Order(); // call to 0 arg constructor indicates invalid order
     }
 }
 class MoveOrder extends Order {
     private final Territory moveTo;
+    //Move orders that seem to 'teleport' across the map require convoys to work.
+    private boolean needsConvoy = false;
+    public boolean isConvoyOnly() { return needsConvoy; }
+    public void setConvoyOnly() { needsConvoy = true; }
     public Territory getMoveTo() {
         return moveTo;
     }
@@ -117,25 +99,27 @@ class MoveOrder extends Order {
     }
     @Override
     public String toString() {
-        return super.toString() + " - " + moveTo.toString();
+        return unit.toString() + " - " + moveTo.toString();
     }
 }
 class SupportOrder extends  Order {
+    //OrderSupported holds a placeholder Order until this SupportOrder has been validated
     private Order orderSupported;
     public Order getOrderSupported() {
         return orderSupported;
     }
-    public SupportOrder(Unit unit) {
+    public SupportOrder(Unit unit, Order orderSupported) {
         super(unit);
+        this.orderSupported = orderSupported;
     }
 
     public void setSupport(Order orderSupported) {
-        if(this.orderSupported != null) throw new SecurityException("Field 'ORDER_SUPPORTED' is immutable once assigned");
+        if(isValidated()) throw new SecurityException("Field 'ORDER_SUPPORTED' is immutable once assigned");
         this.orderSupported = orderSupported;
     }
 
     public String toString() {
-        return super.toString() + " S " + orderSupported.toString();
+        return unit.toString() + " S " + orderSupported.toString();
     }
 }
 class ConvoyOrder extends  Order {
@@ -143,15 +127,16 @@ class ConvoyOrder extends  Order {
     public MoveOrder getConvoyedMovement() {
         return convoyedMovement;
     }
-    public ConvoyOrder(Fleet fleet, String[] targetStringArray) {
+    public ConvoyOrder(Fleet fleet, MoveOrder convoyedMovement) {
         super(fleet);
-        this.targetStringArray = targetStringArray;
+        this.convoyedMovement = convoyedMovement;
     }
 
     public String toString() {
-        return super.toString() + " C " + convoyedMovement.toString();
+        return unit.toString() + " C " + convoyedMovement.toString();
     }
     public void setConvoyedMovement(MoveOrder convoyedMovement) {
+        if(isValidated()) throw new SecurityException("Field 'CONVOYED_MOVEMENT' is immutable once assigned");
         this.convoyedMovement = convoyedMovement;
     }
 }

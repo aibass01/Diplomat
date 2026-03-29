@@ -21,9 +21,10 @@ public class Territory {
     public Unit getOccupyingUnit() {
         return occupyingUnit;
     }
+    public boolean isEmpty() { return occupyingUnit == null; }
 
-    public void setOccupyingUnit(Unit occupying_unit) {
-        this.occupyingUnit = occupying_unit;
+    public void setOccupyingUnit(Unit occupyingUnit) {
+        this.occupyingUnit = occupyingUnit;
     }
 
     private Unit occupyingUnit;
