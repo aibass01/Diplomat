@@ -15,16 +15,6 @@ public class Player {
     public static ArrayList<Order> getAllOrders() {
         return allOrders;
     }
-    public static ArrayList<Order> getHoldOrders() {
-        ArrayList<Order> result = new ArrayList<>();
-        for(Order o: allOrders) {
-            //NOTE: hold orders are represented by valid default Orders, not any subclass of Order
-            if(!(o instanceof MoveOrder || o instanceof ConvoyOrder || o instanceof SupportOrder)) {
-                result.add(o);
-            }
-        }
-        return result;
-    }
 
     private static final File ORDERS_DIR = new File("current/orders");
     public Player(String nation) {
@@ -59,8 +49,8 @@ public class Player {
                     String line = sc.nextLine();
                     if(line.isEmpty()) break;
                     switch (line.charAt(0)) {
-                        case 'A' -> units.add(new Army(map.getTerritory(line.substring(2, 5))));
-                        case 'F' -> units.add(new Fleet(map.getTerritory(line.substring(2, 5))));
+                        case 'A' -> units.add(new Army(map.getTerritory(line.substring(2, 5)), this));
+                        case 'F' -> units.add(new Fleet(map.getTerritory(line.substring(2, 5)), this));
                         default -> throw new IllegalArgumentException("Unit entries must be marked with 'A' for Army of 'F' for Fleet.");
                     }
                 }
@@ -83,12 +73,13 @@ public class Player {
                 case 0: throw new FileNotFoundException("No orders found for country:" + nation);
                 case 1:
                     Scanner sc = new Scanner(files[0]);
+                    sc.nextLine(); //Clear player id on first line
                     while(sc.hasNextLine()) {
-                        System.out.print("Scanning an order in: ");
+                        //System.out.print("Scanning an order in: ");
                         String[] line = sc.nextLine().split("[ ]");
                         //Line format: ["A", "PAR", "-", "BUR"]
                         orders.add(Order.stringArrayToOrder(this, Arrays.copyOfRange(line, 0, 4)));
-                        System.out.println(orders.get(orders.size()-1).toString());
+                        //System.out.println(orders.get(orders.size()-1).toString());
                     }
                     sc.close();
                     allOrders.addAll(orders);

@@ -64,8 +64,8 @@ public class Order {
     //Overloaded version used to generate PLACEHOLDER orders
     public static Order stringArrayToOrder(String[] strs) {
         Unit u = switch(strs[0].charAt(0)) { //PLACEHOLDER UNIT
-            case 'A' -> new Army(Map.getInstance().getTerritory(strs[1]));
-            case 'F' -> new Fleet(Map.getInstance().getTerritory(strs[1]));
+            case 'A' -> new Army(Map.getInstance().getTerritory(strs[1]), null);
+            case 'F' -> new Fleet(Map.getInstance().getTerritory(strs[1]), null);
             default -> null;
         };
         if(u != null) {

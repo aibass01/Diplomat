@@ -3,23 +3,24 @@ import java.util.Arrays;
 
 public abstract class Unit {
     private static Map map = Map.getInstance();
+    private Player owner;
+    public Player getOwner() { return owner; }
     protected Territory location;
     protected final Territory PREVIOUS_LOCATION;
-
     public Territory getLocation() {
         return location;
     }
     public Territory getPREVIOUS_LOCATION() { return PREVIOUS_LOCATION; }
-
     public void setLocation(Territory t) {
         location.setOccupyingUnit(null);
         this.location = t;
         t.setOccupyingUnit(this);
     }
 
-    protected Unit(Territory location) {
+    protected Unit(Territory location, Player owner) {
         this.location = location;
         this.PREVIOUS_LOCATION = location;
+        this.owner = owner;
         Map map = Map.getInstance();
         map.getTerritory(location.getName()).setOccupyingUnit(this);
     }
@@ -33,16 +34,16 @@ public abstract class Unit {
     }
 }
 class Army extends Unit {
-    public Army(Territory location) {
-        super(location);
+    public Army(Territory location, Player owner) {
+        super(location, owner);
     }
     public String toString() {
         return "A " + location;
     }
 }
 class Fleet extends Unit {
-    public Fleet(Territory location) {
-        super(location);
+    public Fleet(Territory location, Player owner) {
+        super(location, owner);
     }
     public String toString() {
         return "F " + location;

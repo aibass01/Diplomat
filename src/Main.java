@@ -1,12 +1,25 @@
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Hello world!");
         Map map = Map.getInstance();
         Map newMap = Map.getNewMap();
+        /*
+        try {
+            Thread.sleep(1000);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+         */
         /*
         System.out.println("Printing data from a territory on the map:");
         System.out.println(map.getTerritory("YOR"));
@@ -25,27 +38,19 @@ public class Main {
 
         };
         for(Player p : players) {
-            try {
-                p.loadGameState(new File("current/F1900.gs"));
-            } catch (FileNotFoundException e) {
+            try (Stream<Path> stream = Files.list(Paths.get("./current"))){
+                List<Path> files = stream.filter(Files::isRegularFile).toList();
+                switch(files.size()) {
+                    case 0 -> throw new FileNotFoundException();
+                    case 1 -> p.loadGameState(files.get(0).toFile());
+                    default -> throw new IllegalStateException("Too many gamestates found");
+                }
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
-        System.out.println("Starting state:");
-        for(Player p: players) {
-            System.out.println(p.getNation() + ":");
-            for(Unit u: p.getUnits()) {
-                if(u.getLocation() == null) {
-                    System.out.println((u instanceof Army) ? "A" : "F");
-                    System.out.print(" DISLODGED from " + u.getPREVIOUS_LOCATION().getName());
-                } else {
-                    System.out.println(u);
-                }
-            }
-            System.out.println();
-        }
         compileOrders(players);
-        System.out.println("Result state:");
+        System.out.println("Current map state:");
         for(Player p: players) {
             System.out.println(p.getNation() + ":");
             for(Unit u: p.getUnits()) {
@@ -58,6 +63,9 @@ public class Main {
             }
             System.out.println();
         }
+        System.out.println("XXX");
+        System.out.flush();
+
     }
 
     public static void compileOrders(Player[] players) {
@@ -82,7 +90,7 @@ public class Main {
                 x++;
             }
             Order o = orderQueue.remove();
-            System.out.println("Attempting to solve: "+o);
+            //System.out.println("Attempting to solve: "+o);
             Unit u = o.getUnit();
             //execute logic based on the type of order
             switch(o) {
@@ -91,7 +99,7 @@ public class Main {
                     if(!mo.isValidated()) {
                         if(!Arrays.asList(u.getLocation().getBorders1()).contains(mo.getMoveTo())) {
                             if(u instanceof Fleet) {
-                                System.out.println("- Order invalidated: "+mo+". Replacing with hold order.");
+                                //System.out.println("- Order invalidated: "+mo+". Replacing with hold order.");
                                 orderQueue.add(new Order(u)); //Add hold order into queue to replace invalid move order
                                 continue;
                             }
@@ -100,16 +108,16 @@ public class Main {
                                 if(x>=5) { //Convoys are finished resolving at x=5
                                     //Replaced invalid convoy attempt with hold
                                     orderQueue.add(new Order(u));
-                                    System.out.println("- Order \'teleports\'. Invalidating.");
+                                    //System.out.println("- Order \'teleports\'. Invalidating.");
                                     continue;
                                 } else {
-                                    System.out.println("- Order is convoy-only");
+                                    //System.out.println("- Order is convoy-only");
                                     mo.setConvoyOnly();
                                     continue;
                                 }
                             }
                         } else {
-                            System.out.println("- Valid move order");
+                            //System.out.println("- Valid move order");
                             mo.setValid();
                         }
                     }
@@ -123,11 +131,11 @@ public class Main {
                                 && ((MoveOrder) ((SupportOrder) top).getOrderSupported()).getMoveTo().equals(u.getLocation())) {
                                     //replace this (mo) order with a hold
                                     orderQueue.add(new Order(u));
-                                    System.out.println("- \'"+mo+"\' is an illegal support cut.");
+                                    //System.out.println("- \'"+mo+"\' is an illegal support cut.");
                                     break;
                                 }
                                 //Remove cut support order and replace with a hold
-                                System.out.println("- \'"+top+"\' cut by \'"+mo+"\'");
+                                //System.out.println("- \'"+top+"\' cut by \'"+mo+"\'");
                                 orderQueue.add(new Order(orderQueue.remove().getUnit()));
                                 break;
                             }
@@ -142,20 +150,20 @@ public class Main {
                                 || (orderQueue.peek().getClass() == Order.class && orderQueue.peek().getUnit().getLocation().equals(mo.getMoveTo()))) {
                             uncontested = false;
                             collisions.add((MoveOrder) orderQueue.peek());
-                            System.out.println("- Collision found: " + orderQueue.peek());
-                            System.out.println("   - "+mo.getStrength()+" str vs. "+orderQueue.peek().getStrength()+" str");
+                            //System.out.println("- Collision found: " + orderQueue.peek());
+                            //System.out.println("   - "+mo.getStrength()+" str vs. "+orderQueue.peek().getStrength()+" str");
                         }
                     }
                     if(mo.getStrength() == -1) {
                         //Move orders that loose standoffs become holds
                         orderQueue.add(new Order(u));
-                        System.out.println("- \'" + mo + "\' bounces");
+                        //System.out.println("- \'" + mo + "\' bounces");
                         continue;
                     }
                     //uncontested case
                     if (uncontested) {
                         //order succeeds. Note that the order is not added back to the queue, because it's finished processing
-                        System.out.println("- Uncontested order \'" + mo + "\' succeeds");
+                        //System.out.println("- Uncontested order \'" + mo + "\' succeeds");
                         u.setLocation(newMap.getTerritory(mo.getMoveTo().getName()));
                         u.getLocation().setOccupyingUnit(u);
                         continue;
@@ -167,23 +175,23 @@ public class Main {
                                 //Move orders that loose standoffs become holds
                                 orderQueue.add(new Order(u));
                                 lostStandoff = true;
-                                System.out.println("- \'" + mo + "\' bounces");
+                                //System.out.println("- \'" + mo + "\' bounces");
                             }
                             if (mo.getStrength() >= collision.getStrength()) {
                                 collision.setBounce();
-                                System.out.println("- \'"+collision+"\' will bounce");
+                                //System.out.println("- \'"+collision+"\' will bounce");
                             }
                         }
                         if (!lostStandoff) {
                             u.setLocation(newMap.getTerritory(mo.getMoveTo().getName()));
                             u.getLocation().setOccupyingUnit(u);
-                            System.out.println("- \'" + mo + "\' wins standoff");
+                            //System.out.println("- \'" + mo + "\' wins standoff");
                             continue;
                         }
                     } else {
                         //add order back into queue for re-assessment later
                         orderQueue.add(mo);
-                        System.out.println("- Cannot be calculated now, adding back to queue");
+                        //System.out.println("- Cannot be calculated now, adding back to queue");
                     }
                 } case SupportOrder so -> {
                     //Check validity:
@@ -192,7 +200,7 @@ public class Main {
                            if(orderQueue.peek().equals(so.getOrderSupported())) {
                                so.setSupport(orderQueue.peek());
                                so.setValid();
-                               System.out.println("- Valid support order");
+                               //System.out.println("- Valid support order");
                            }
                         }
                     }
@@ -205,7 +213,7 @@ public class Main {
                     } else if(x>=2 && !so.isValidated()) {
                         //Replace so with a hold order
                         orderQueue.add(new Order(so.getUnit()));
-                        System.out.println("\'"+so+"\' is invalid");
+                        //System.out.println("\'"+so+"\' is invalid");
                     } else {
                         //Add so back to queue for further processing
                         orderQueue.add(so);
@@ -216,14 +224,14 @@ public class Main {
                         //Convoys MUST convoy an army across water
                         if(u.getLocation().getType() != Territory.Type.SEA || !(co.getConvoyedMovement().getUnit() instanceof  Army)) {
                             orderQueue.add(new Order(u));
-                            System.out.println("- Invlaid convoy");
+                            //System.out.println("- Invlaid convoy");
                             continue;
                         }
                         for(int i = 0; i < orderQueue.size(); i++, orderQueue.add(orderQueue.remove())) {
                             if(orderQueue.peek().equals(co.getConvoyedMovement())) {
                                 co.setConvoyedMovement((MoveOrder) orderQueue.peek());
                                 co.setValid();
-                                System.out.println("- Valid convoy");
+                                //System.out.println("- Valid convoy");
                             }
                         }
                     }
@@ -232,24 +240,24 @@ public class Main {
                         continue;
                     } else if(!co.isValidated()) {
                         orderQueue.add(new Order(u));
-                        System.out.println("- \'"+co+"\' is invalid");
+                        //System.out.println("- \'"+co+"\' is invalid");
                         continue;
                     } else {
                         co.getConvoyedMovement().setValid();
                         u.setLocation(newMap.getTerritory(u.getLocation().getName()));
                         u.getLocation().setOccupyingUnit(u);
-                        System.out.println("- convoy \'"+co+"\' successful!");
+                        //System.out.println("- convoy \'"+co+"\' successful!");
                     }
                 } default -> { //Hold order logic:
                     if(x<=4) {
                         orderQueue.add(o);
                     } else if(!newMap.getTerritory(u.getLocation().getName()).isEmpty()){
                         u.setLocation(null);
-                        System.out.println("- "+u+" dislodged");
+                        //System.out.println("- "+u+" dislodged");
                     } else {
                         u.setLocation(newMap.getTerritory(u.getLocation().getName()));
                         u.getLocation().setOccupyingUnit(u);
-                        System.out.println("- \'"+o+"\' successful");
+                        //System.out.println("- \'"+o+"\' successful");
                     }
                 }
             }

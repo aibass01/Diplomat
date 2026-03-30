@@ -1,5 +1,6 @@
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.List;
 import java.util.Scanner;
 import java.util.ArrayList;
 
@@ -36,6 +37,7 @@ public class Map {
     public Territory getTerritory(String target) {
         Territory[] list = territories;
         int min_index = 0, max_index = list.length-1, i;
+        if(target == null) return null;
         while(max_index>=min_index) {
             i = (max_index+min_index)/2;
             if(list[i].getName().compareTo(target) < 0) min_index = i+1;
@@ -47,6 +49,7 @@ public class Map {
     public Territory getTerritory(String target, Territory[] searchThrough) {
         Territory[] list = searchThrough;
         int min_index = 0, max_index = list.length-1, i;
+        if(target == null) return null;
         while(max_index>=min_index) {
             i = (max_index+min_index)/2;
             if(list[i].getName().compareTo(target) < 0) {
@@ -61,6 +64,18 @@ public class Map {
     }
     public Territory[] getAllTerritories() {
         return territories;
+    }
+    public Territory[] getTerritoriesOwnedBy(Player p) {
+        List<Territory> result = new ArrayList<>();
+        for(Territory t: territories) {
+            if(t.getOwner().equals(p)) result.add(t);
+        }
+        return result.toArray(new Territory[0]);
+    }
+    public void updateOwnership() {
+        for(Territory t: territories) {
+            if(t.isSupplyPoint() && !t.isEmpty()) t.setOwner(t.getOccupyingUnit().getOwner());
+        }
     }
     private Territory[] populateMapFromTable() throws FileNotFoundException {
         File file = new File("src/Map.txt");

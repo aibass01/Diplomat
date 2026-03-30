@@ -7,6 +7,7 @@ public class Territory {
     private final String name; //Names should be 3 letters all caps i.e. "PRU" for prussia
     private final Type type;
     private final boolean isSupplyPoint;
+    public boolean isSupplyPoint() { return isSupplyPoint; }
 
     public void setOwner(Player owner) {
         this.owner = owner;
