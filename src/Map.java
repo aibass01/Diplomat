@@ -68,13 +68,19 @@ public class Map {
     public Territory[] getTerritoriesOwnedBy(Player p) {
         List<Territory> result = new ArrayList<>();
         for(Territory t: territories) {
-            if(t.getOwner().equals(p)) result.add(t);
+            if(t.getOwner() != null && t.getOwner().equals(p)) result.add(t);
         }
         return result.toArray(new Territory[0]);
     }
     public void updateOwnership() {
         for(Territory t: territories) {
-            if(t.isSupplyPoint() && !t.isEmpty()) t.setOwner(t.getOccupyingUnit().getOwner());
+            if(t.isSupplyPoint()) {
+                if(t.isEmpty()) {
+                    t.setOwner(singleInstance.getTerritory(t.getName()).getOwner());
+                } else {
+                    t.setOwner(t.getOccupyingUnit().getOwner());
+                }
+            }
         }
     }
     private Territory[] populateMapFromTable() throws FileNotFoundException {

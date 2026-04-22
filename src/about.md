@@ -38,14 +38,14 @@ Players can update their orders before the turn is over by DMing Diplomat a new 
 
 When ready, the game HOST can send the **!reveal** command to have Diplomat analyze everyone's orders and produce a new (tentative) game state.
 Then, players will submit their retreat orders, and build/disband orders if it's a fall turn.
-The host uses **!reveal** to have Diplomat analyze retreat orders and build/disband orders as well.
+The host uses **!reveal_retreats** and **!reveal_builds** to have Diplomat analyze retreat orders and build/disband orders respectively.
 %
 
 ### Retreat Orders
 
 During gameplay, some units may be DISLODGED and forced to retreat to a nearby territory. 
 In this case, Diplomat will inform the player(s) with dislodged units that they need to write retreat orders.
-Players send their retreat orders to Diplomat using **!retreat**, followed by each required retreat order on it's own following line.
+Players send their retreat orders to Diplomat using **!orders**, followed by each required retreat order on it's own following line.
 Retreat orders are written as follows:
 > A LON > YOR
 
@@ -59,11 +59,9 @@ Players may also voluntarily disband dislodged units like so:
 ### Build/Disband Orders
 
 At the end of a fall turn, players must build new units or disband existing units until their total number of units equals the number of supply points the control.
-Players can DM Diplomat their build/disband orders using **!build** or **!disband** respectively.
+Players can DM Diplomat their build/disband orders using **!orders** like other orders.
 Here are some examples:
 * If Russia gets to build a unit, i.e. they captured a new supply point this turn, they might send:
-> !build
-> F SEV
+> F SEV +
 * If Turkey has to disband a unit, i.e. Russia captured their supply point this turn, they might send:
-> !disband
-> A ARM
+> A ARM D

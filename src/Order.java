@@ -2,26 +2,12 @@ import java.util.Arrays;
 
 public class Order {
     private static final Map map = Map.getInstance();
+    private static final Map newMap = Map.getNewMap();
     private boolean validated = false;
     public boolean isValidated() {
         return validated;
     }
     public void setValid() { validated = true; }
-    public void setPass() { if(isSuccess == Success.UNDECIDED) isSuccess = Success.PASS; }
-    public void setFail() {
-        if(isSuccess == Success.UNDECIDED) isSuccess = Success.FAIL;
-    }
-    public enum Success {
-        PASS,
-        FAIL,
-        UNDECIDED
-    }
-
-    public Success isSuccess() {
-        return isSuccess;
-    }
-
-    private Success isSuccess = Success.UNDECIDED;
     private int support = 0;
     public int getStrength() {
         return support;
@@ -32,7 +18,7 @@ public class Order {
     }
     public void setBounce() { support = -1; }
     protected Unit unit = null;
-    public Order() { isSuccess = Success.FAIL; validated = false; }
+    public Order() { validated = false; }
     public  Order(Unit unit) {
         this.unit = unit;
     }
@@ -50,16 +36,22 @@ public class Order {
     }
 
     public static Order stringArrayToOrder(Player p, String[] strs) {
+        if(strs[2].equals("B")) {
+            Territory loc = newMap.getTerritory(strs[1]);
+            return new BuildOrder((strs[0].charAt(0) == 'A') ? new Army(loc, p) : new Fleet(loc, p), loc);
+        }
         Unit u = p.getUnit(strs[0].charAt(0), map.getTerritory(strs[1]));
         if(u != null) {
             return switch(strs[2]) {
                 case "H" -> new Order(u);
                 case "-" -> new MoveOrder(u, map.getTerritory(strs[3]));
                 case "S" -> new SupportOrder(u, Order.stringArrayToOrder(Arrays.copyOfRange(strs, 3, strs.length)));
-                case "C" -> new ConvoyOrder((Fleet) u, (MoveOrder) Order.stringArrayToOrder(Arrays.copyOfRange(strs,3, strs.length)));
+                case "C" -> new ConvoyOrder((Fleet) u, (MoveOrder) Order.stringArrayToOrder(Arrays.copyOfRange(strs, 3, strs.length)));
+                case ">" -> new RetreatOrder(u, newMap.getTerritory(strs[3]));
+                case "D" -> new DisbandOrder(u);
                 default -> new Order(u); // default order is hold
             };
-        } else return new Order(); // call to 0 arg constructor indicates invalid order
+        } else return new Order();
     }
     //Overloaded version used to generate PLACEHOLDER orders
     public static Order stringArrayToOrder(String[] strs) {
@@ -74,7 +66,7 @@ public class Order {
                 case "-" -> new MoveOrder(u, map.getTerritory(strs[3]));
                 default -> new Order(u); // default order is hold
             };
-        } else return new Order(); // call to 0 arg constructor indicates invalid order
+        } else return new Order();
     }
 }
 class MoveOrder extends Order {
@@ -89,13 +81,6 @@ class MoveOrder extends Order {
     public MoveOrder(Unit unit, Territory moveTo) {
         super(unit);
         this.moveTo = moveTo;
-    }
-    @Override
-    public void setPass(){
-        if(isSuccess() == Success.UNDECIDED) {
-            super.setPass();
-            unit.setLocation(moveTo);
-        }
     }
     @Override
     public String toString() {
@@ -138,5 +123,43 @@ class ConvoyOrder extends  Order {
     public void setConvoyedMovement(MoveOrder convoyedMovement) {
         if(isValidated()) throw new SecurityException("Field 'CONVOYED_MOVEMENT' is immutable once assigned");
         this.convoyedMovement = convoyedMovement;
+    }
+}
+class RetreatOrder extends Order {
+    private final Territory retreatTo;
+    public Territory getRetreatTo() {
+        return retreatTo;
+    }
+    public RetreatOrder(Unit unit, Territory retreatTo) {
+        super(unit);
+        this.retreatTo = retreatTo;
+    }
+    @Override
+    public String toString() {
+        return unit.toString()+" > "+retreatTo.toString();
+    }
+}
+class DisbandOrder extends Order {
+    public DisbandOrder(Unit u) {
+        super(u);
+    }
+    @Override
+    public String toString() {
+        return unit.toString()+" D";
+    }
+}
+class BuildOrder extends Order {
+    private final Territory location;
+    public Territory getLocation() {
+        return location;
+    }
+    public BuildOrder(Unit u, Territory location) {
+        super(u);
+        this.location = location;
+    }
+
+    @Override
+    public String toString() {
+        return unit.toString()+" B";
     }
 }

@@ -5,17 +5,11 @@ import java.util.Arrays;
 import java.util.Scanner;
 
 public class Player {
-    private Map map = Map.getInstance();
+    private final Map map = Map.getInstance();
     private final String nation;
     public String getNation() { return nation; }
     private ArrayList<Unit> units;
-    private int supplyPoints;
     private ArrayList<Order> orders;
-    private static ArrayList<Order> allOrders = new ArrayList<>();
-    public static ArrayList<Order> getAllOrders() {
-        return allOrders;
-    }
-
     private static final File ORDERS_DIR = new File("current/orders");
     public Player(String nation) {
         this.nation = nation;
@@ -34,16 +28,14 @@ public class Player {
         }
         return null;
     }
-    public int getNumSupplyPoints() { return supplyPoints; }
+    public int getNumSupplyPoints(Map m) { return m.getTerritoriesOwnedBy(this).length; }
 
     public void loadGameState(File f) throws FileNotFoundException {
         Scanner sc = new Scanner(f);
-        supplyPoints = 0;
         while(true) {
             if(sc.nextLine().equals(nation)) {
                 for(String s : sc.nextLine().split("[,]")) {
                     map.getTerritory(s).setOwner(this);
-                    supplyPoints++;
                 }
                 while(sc.hasNextLine()) {
                     String line = sc.nextLine();
@@ -61,6 +53,7 @@ public class Player {
     }
 
     public void loadOrders() throws FileNotFoundException {
+        orders = new ArrayList<>();
         if(ORDERS_DIR.exists() && ORDERS_DIR.isDirectory()) {
             File[] files;
             try {
@@ -76,22 +69,23 @@ public class Player {
                     sc.nextLine(); //Clear player id on first line
                     while(sc.hasNextLine()) {
                         //System.out.print("Scanning an order in: ");
-                        String[] line = sc.nextLine().split("[ ]");
+                        String[] line = sc.nextLine().split(" ");
                         //Line format: ["A", "PAR", "-", "BUR"]
-                        orders.add(Order.stringArrayToOrder(this, Arrays.copyOfRange(line, 0, 4)));
+                        orders.add(Order.stringArrayToOrder(this, line));
                         //System.out.println(orders.get(orders.size()-1).toString());
                     }
                     sc.close();
-                    allOrders.addAll(orders);
                     break;
                 default: throw new IllegalStateException("Too many orders files found.");
             }
         } else throw new FileNotFoundException("Unable to locate directory:" + ORDERS_DIR);
     }
+
     public Unit getUnit(char unitType, Territory location) {
         // Implements linear search
         for(Unit i: units) {
-            if (i.getLocation().equals(location)) {
+            if(i.getLocation() == null && !i.getPREVIOUS_LOCATION().equals(location)) continue;
+            if ((i.getLocation() == null && i.getPREVIOUS_LOCATION().equals(location)) || i.getLocation().equals(location)) {
                 return switch (i) {
                     case Army a -> (unitType == 'A') ? a : null;
                     case Fleet f -> (unitType == 'F') ? f : null;
@@ -100,5 +94,9 @@ public class Player {
             }
         }
         return null;
+    }
+
+    public void addUnit(Unit u) {
+        units.add(u);
     }
 }

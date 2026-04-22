@@ -69,4 +69,8 @@ public class Territory {
         this.borders1 = borders1;
         this.borders2 = borders2;
     }
+
+    public boolean equals(Territory other) {
+        return name.equals(other.name);
+    }
 }

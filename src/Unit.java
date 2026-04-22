@@ -12,9 +12,8 @@ public abstract class Unit {
     }
     public Territory getPREVIOUS_LOCATION() { return PREVIOUS_LOCATION; }
     public void setLocation(Territory t) {
-        location.setOccupyingUnit(null);
         this.location = t;
-        t.setOccupyingUnit(this);
+        if(t != null) t.setOccupyingUnit(this);
     }
 
     protected Unit(Territory location, Player owner) {
@@ -26,7 +25,7 @@ public abstract class Unit {
     }
 
     public boolean equals(Unit other) {
-        return this.getLocation() == other.getLocation() && this.getClass().equals(other.getClass());
+        return ((this.location == null && other.getLocation() == null) || this.location.equals(other.getLocation())) && this.getClass().equals(other.getClass());
     }
 
     public boolean canMoveTo(Territory target) {

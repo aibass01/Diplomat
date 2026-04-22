@@ -1,7 +1,5 @@
 # This example requires the 'message_content' intent.
 import subprocess
-import time
-
 import discord
 from discord.ext import commands
 import logging
@@ -54,13 +52,10 @@ async def about(ctx):
         print(f"Error: {e}")
 
 rootMsg: discord.message
-gameHostId: str
 
 
 @bot.command()
 async def new_game(ctx):
-    global gameHostId
-    gameHostId = ctx.author.id
     await ctx.send("New game created!\n"
                    "Player assignments are as follows:\n"
                    "AUSTRIA: UNCLAIMED\n"
@@ -133,10 +128,13 @@ async def orders(ctx, *, message: str):
     except Exception as e:
         print(f"Exception: {e}")
 
+java_process: subprocess.Popen
+
 
 @bot.command()
 async def reveal(ctx):
     result = ""
+    global java_process
     try:
         java_process = subprocess.Popen(
             ['java','-cp', 'out/production/Diplomat','Main'],
@@ -147,7 +145,6 @@ async def reveal(ctx):
             bufsize=1,
             cwd=os.getcwd()+"/.."
         )
-        print(os.getcwd())
         while True:
             line = java_process.stdout.readline()
             if not line:
@@ -161,5 +158,42 @@ async def reveal(ctx):
         print(f"Exception: {e}")
     await ctx.send(result)
 
+
+@bot.command()
+async def reveal_retreats(ctx):
+    global java_process
+    if java_process.poll() is not None:
+        await ctx.send("No retreats to report now")
+        return
+    java_process.stdin.write("GO\n")
+    result = ""
+    while True:
+        line = java_process.stdout.readline()
+        clean_line = line.strip()
+        if clean_line == "XXX":
+            break
+        result += clean_line+"\n"
+        print(clean_line, flush=True)
+    await ctx.send(result)
+
+
+@bot.command()
+async def reveal_builds(ctx):
+    global java_process
+    if java_process.poll() is not None:
+        await ctx.send("No builds to report now")
+        return
+    java_process.stdin.write("GO")
+    result = ""
+    while True:
+        line = java_process.stdout.readline()
+        if not line:
+            break
+        clean_line = line.strip()
+        if clean_line == "XXX":
+            break
+        result += clean_line+"\n"
+        print(clean_line, flush=True)
+    await ctx.send(result)
 
 bot.run(token, log_handler=handler, log_level=logging.DEBUG)
