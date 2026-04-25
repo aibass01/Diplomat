@@ -8,7 +8,7 @@ Enter ***Diplomat***, a Discord bot designed to solve these problems!
 
 ## Using the Bot
 
-To start a new game with Diplomat, simply type **!new-game**. Diplomat will respond with a message prompting users to claim a country with the **!claim** command.
+To start a new game with Diplomat, simply type **!new_game**. Diplomat will respond with a message prompting users to claim a country with the **!claim** command.
 When you claim a country, Diplomat will prevent other users from claiming that country later and will open a DM with you. This is where you send your orders to Diplomat.
 > NOTE: The user who sends the **!new_game** command is saved as the game HOST.
 

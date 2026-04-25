@@ -106,19 +106,20 @@ async def claim(ctx, arg):
 
 @bot.command()
 async def orders(ctx, *, message: str):
-    if not isinstance(ctx.channel, discord.DMChannel):
+    if not isinstance(ctx.channel, discord.DMChannel): # Prevent players from leaking their orders publicly
         await ctx.message.delete()
         await ctx.send("For your own privacy, please send orders in DMs")
         return
     try:
         file_names = os.listdir("../current/orders")
-        for file_name in file_names:
+        for file_name in file_names: # Find which file to write the player's orders into
             with open(f"../current/orders/{file_name}", 'r+', encoding='utf-8') as f:
                 try:
                     country_id = int(f.read().split("\n")[0])
                 except ValueError:
                     country_id = -1
-                if country_id == ctx.author.id:
+                if country_id == ctx.author.id: # Check that this orders file has been claimed by this player
+                    # Write the player's orders to the file:
                     f.seek(0)
                     f.write(str(country_id)+"\n")
                     f.write(message)
@@ -152,10 +153,12 @@ async def reveal(ctx):
             clean_line = line.strip()
             if clean_line == "XXX":
                 break
+            # collect the output from the subprocess in result
             result += clean_line+"\n"
             print(clean_line, flush=True)
     except Exception as e:
         print(f"Exception: {e}")
+    # send the collected output of the process
     await ctx.send(result)
 
 
@@ -183,7 +186,7 @@ async def reveal_builds(ctx):
     if java_process.poll() is not None:
         await ctx.send("No builds to report now")
         return
-    java_process.stdin.write("GO")
+    java_process.stdin.write("GO\n")
     result = ""
     while True:
         line = java_process.stdout.readline()

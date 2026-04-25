@@ -36,15 +36,16 @@ public class Order {
     }
 
     public static Order stringArrayToOrder(Player p, String[] strs) {
-        if(strs[2].equals("B")) {
+        if(strs[2].equals("B")) { //Build orders create a new unit, so u (below) will return null if it tries to search for them
             Territory loc = newMap.getTerritory(strs[1]);
             return new BuildOrder((strs[0].charAt(0) == 'A') ? new Army(loc, p) : new Fleet(loc, p), loc);
         }
-        Unit u = p.getUnit(strs[0].charAt(0), map.getTerritory(strs[1]));
+        Unit u = p.getUnit(strs[0].charAt(0), map.getTerritory(strs[1])); //Find order operand
         if(u != null) {
-            return switch(strs[2]) {
+            return switch(strs[2]) { //Construct the correct type of order for the given operator
                 case "H" -> new Order(u);
                 case "-" -> new MoveOrder(u, map.getTerritory(strs[3]));
+                //Support and convoy orders create a placeholder order that they use to compare to other orders later
                 case "S" -> new SupportOrder(u, Order.stringArrayToOrder(Arrays.copyOfRange(strs, 3, strs.length)));
                 case "C" -> new ConvoyOrder((Fleet) u, (MoveOrder) Order.stringArrayToOrder(Arrays.copyOfRange(strs, 3, strs.length)));
                 case ">" -> new RetreatOrder(u, newMap.getTerritory(strs[3]));
@@ -61,7 +62,7 @@ public class Order {
             default -> null;
         };
         if(u != null) {
-            return switch(strs[2]) {
+            return switch(strs[2]) { //Only move and hold orders will need placeholders
                 case "H" -> new Order(u);
                 case "-" -> new MoveOrder(u, map.getTerritory(strs[3]));
                 default -> new Order(u); // default order is hold

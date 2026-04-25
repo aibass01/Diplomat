@@ -33,14 +33,15 @@ public class Player {
     public void loadGameState(File f) throws FileNotFoundException {
         Scanner sc = new Scanner(f);
         while(true) {
-            if(sc.nextLine().equals(nation)) {
+            if(sc.nextLine().equals(nation)) { //Find this player's section in the game state file
                 for(String s : sc.nextLine().split("[,]")) {
                     map.getTerritory(s).setOwner(this);
+                    // Emulates putting tokens on the board to show which territories are owned by which player
                 }
                 while(sc.hasNextLine()) {
                     String line = sc.nextLine();
                     if(line.isEmpty()) break;
-                    switch (line.charAt(0)) {
+                    switch (line.charAt(0)) { // Create a unit for each unit listed in the game state
                         case 'A' -> units.add(new Army(map.getTerritory(line.substring(2, 5)), this));
                         case 'F' -> units.add(new Fleet(map.getTerritory(line.substring(2, 5)), this));
                         default -> throw new IllegalArgumentException("Unit entries must be marked with 'A' for Army of 'F' for Fleet.");

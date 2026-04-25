@@ -82,6 +82,8 @@ public class Main {
                 System.out.println(p.getNation()+": "+p.getNumSupplyPoints(newMap));
                 if(p.getNumSupplyPoints(newMap) >= 18) {
                     System.out.println(p.getNation()+" wins!");
+                    System.out.println("XXX");
+                    System.out.flush();
                     return;
                 }
                 if(p.getNumSupplyPoints(newMap) > p.getUnits().size()) {
